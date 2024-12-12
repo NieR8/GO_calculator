@@ -7,13 +7,19 @@ import (
 
 // Calc вычисляет выражение и возвращает результат
 func Calc(expression string) (float64, error) {
-	tokens, err := tokenize(expression)
-	if len(tokens) < 2 {
-		return 0, ErrNotEnoughArgs
+	tokens, err1 := tokenize(expression)
+	if err1 != nil {
+		return 0, err1
 	}
-	postfix, err := infixToPostfix(tokens)
-	result, err := evalPostfix(postfix)
-	return result, err
+	postfix, err2 := infixToPostfix(tokens)
+	if err2 != nil {
+		return 0, err2
+	}
+	result, err3 := evalPostfix(postfix)
+	if err3 != nil {
+		return 0, err3
+	}
+	return result, nil
 }
 
 // tokenize разбивает строку на токены (числа и операторы)
