@@ -6,4 +6,5 @@
 ### 3) Отправьте POST-запрос на установленный порт. Пример запроса:  {"expession": "2+2"}. Советую использовать Postman.
 ![image](https://github.com/user-attachments/assets/369fb8e8-1c61-44c6-82b6-3c3cf4b0055d)
 ### 4) При использовании Postman, ответ к вашему выражению будет отображен в отдельной вкладке Body, также ответ отобразится в консоли.
-![image](https://github.com/user-attachments/assets/878d0047-c127-44c0-8ebb-82082c439b9b)
+![image](https://github.com/user-attachments/assets/118a910a-875a-4b9d-8362-dc2d4e43cd0c)
+
