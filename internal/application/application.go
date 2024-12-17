@@ -38,36 +38,53 @@ type Request struct {
 	Expression string `json:"expression"`
 }
 
+type Response struct {
+	Result string `json:"result"`
+}
+type ResponseErr struct {
+	ResErr string `json:"error"`
+}
+
 func CalcHandler(w http.ResponseWriter, r *http.Request) {
+
 	request := &Request{}
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		fmt.Printf(err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		fmt.Printf(err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	if request.Expression == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		http.Error(w, ErrInvalidExprName.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
+		resErr := ResponseErr{ResErr: ErrInvalidExprName.Error()}
+		btsErr, _ := json.Marshal(resErr)
+		w.Write(btsErr)
+		//http.Error(w, ErrInvalidExprName.Error(), http.StatusUnprocessableEntity)
 		fmt.Printf(ErrInvalidExprName.Error() + "\n")
 		return
 	}
 	result, err := calculation.Calc(request.Expression)
+	resJSN := Response{Result: fmt.Sprintf("%.3f", result)}
+	byts, _ := json.Marshal(resJSN)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "ошибка: %s", err.Error())
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		resErr := ResponseErr{ResErr: err.Error()}
+		btsErr, _ := json.Marshal(resErr)
+		w.Write(btsErr)
+		//fmt.Fprintf(w, "ошибка: %s", err.Error())
 		fmt.Printf("ошибка: %s \n", err.Error())
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "ответ: %.3f", result)
+		w.Write(byts)
+		//fmt.Fprintf(w, "ответ: %.3f", result)
 		fmt.Printf("ответ: %.3f \n", result)
 	}
 }
 
 func (a *Application) RunServer() error {
-	http.HandleFunc("/", CalcHandler)
+	http.HandleFunc("/api/v1/calculate", CalcHandler)
 	return http.ListenAndServe(":"+a.config.Addr, nil)
 }
