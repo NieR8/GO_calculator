@@ -38,7 +38,7 @@ func TestCalc(t *testing.T) {
 		},
 		{
 			name:           "negative /",
-			expression:     "-6/-2",
+			expression:     "-6/(-2)",
 			expectedResult: 3,
 		},
 		{

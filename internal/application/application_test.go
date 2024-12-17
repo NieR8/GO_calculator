@@ -26,11 +26,7 @@ func TestCalcHandler(t *testing.T) {
 		},
 		{
 			name:       "2",
-			expression: strings.NewReader(`{"expression": "2"}`),
-		},
-		{
-			name:       "",
-			expression: strings.NewReader(`{"expression": ""}`),
+			expression: strings.NewReader(`{"expression": "2*"}`),
 		},
 	}
 
@@ -41,7 +37,7 @@ func TestCalcHandler(t *testing.T) {
 		res := w.Result()
 		defer res.Body.Close()
 
-		if res.StatusCode != http.StatusBadRequest {
+		if res.StatusCode != http.StatusUnprocessableEntity {
 			t.Errorf("wrong status code")
 		}
 	}

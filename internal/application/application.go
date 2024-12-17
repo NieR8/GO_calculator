@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-var ErrInvalidExprName = errors.New("в теле запроса ключ выражения должен называться expression")
+var ErrInvalidExprName = errors.New("в теле запроса ключ выражения должен называться expression либо выражение не должно быть пустым")
 
 type Config struct {
 	Addr string
