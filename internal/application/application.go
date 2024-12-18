@@ -2,14 +2,12 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/NieR8/myProject/pkg/calculation"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 )
-
-var ErrInvalidExprName = errors.New("в теле запроса ключ выражения должен называться expression либо выражение не должно быть пустым")
 
 type Config struct {
 	Addr string
@@ -47,13 +45,23 @@ type ResponseErr struct {
 
 func CalcHandler(w http.ResponseWriter, r *http.Request) {
 
+	log := logrus.New()
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
+		resErr := ResponseErr{ResErr: ErrInternalServer.Error()}
+		btsErr, _ := json.Marshal(resErr)
+		w.Write(btsErr)
+		//http.Error(w, ErrInvalidExprName.Error(), http.StatusUnprocessableEntity)
+		log.Errorf(ErrInternalServer.Error())
+		return
+	}
 	request := &Request{}
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		fmt.Printf(err.Error(), http.StatusUnprocessableEntity)
+		log.Errorf(err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -63,7 +71,7 @@ func CalcHandler(w http.ResponseWriter, r *http.Request) {
 		btsErr, _ := json.Marshal(resErr)
 		w.Write(btsErr)
 		//http.Error(w, ErrInvalidExprName.Error(), http.StatusUnprocessableEntity)
-		fmt.Printf(ErrInvalidExprName.Error() + "\n")
+		log.Errorf(ErrInvalidExprName.Error())
 		return
 	}
 	result, err := calculation.Calc(request.Expression)
@@ -75,12 +83,12 @@ func CalcHandler(w http.ResponseWriter, r *http.Request) {
 		btsErr, _ := json.Marshal(resErr)
 		w.Write(btsErr)
 		//fmt.Fprintf(w, "ошибка: %s", err.Error())
-		fmt.Printf("ошибка: %s \n", err.Error())
+		log.Errorf("ошибка: %s", err.Error())
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write(byts)
 		//fmt.Fprintf(w, "ответ: %.3f", result)
-		fmt.Printf("ответ: %.3f \n", result)
+		log.Infof("ответ: %.3f", result)
 	}
 }
 
