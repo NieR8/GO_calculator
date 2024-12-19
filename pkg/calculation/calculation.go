@@ -44,7 +44,7 @@ func tokenize(expression string) ([]string, error) {
 		} else {
 			if current.Len() > 0 {
 				tokens = append(tokens, current.String())
-				if current.Len() > 1 && current.String()[0] == 48 {
+				if current.Len() > 1 && current.String()[0] == 48 && current.String()[1] != 46 {
 					return nil, ErrInvalidSymbol
 				}
 				current.Reset()
@@ -66,7 +66,7 @@ func tokenize(expression string) ([]string, error) {
 	}
 
 	for _, v := range tokens {
-		if v[0] == 48 && len(v) > 1 || len(v) > 1 && v[0] == 45 && v[1] == 48 {
+		if v[0] == 48 && len(v) > 1 && v[1] != 46 || len(v) > 1 && v[0] == 45 && v[1] == 48 {
 			return nil, ErrInvalidSymbol // проверка на то, чтобы впереди числа не стоял 0
 		}
 	}
