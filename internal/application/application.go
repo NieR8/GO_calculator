@@ -43,15 +43,18 @@ type ResponseErr struct {
 	ResErr string `json:"error"`
 }
 
+func jsnResult(w http.ResponseWriter, str string) { // формирует результат запроса в виде json и выводит его
+	res := ResponseErr{ResErr: str}
+	byts, _ := json.Marshal(res)
+	w.Write(byts)
+}
+
 func CalcHandler(w http.ResponseWriter, r *http.Request) {
 
 	log := logrus.New()
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
-		resErr := ResponseErr{ResErr: ErrInternalServer.Error()}
-		btsErr, _ := json.Marshal(resErr)
-		w.Write(btsErr)
-		//http.Error(w, ErrInvalidExprName.Error(), http.StatusUnprocessableEntity)
+		jsnResult(w, ErrInternalServer.Error())
 		log.Errorf(ErrInternalServer.Error())
 		return
 	}
@@ -60,34 +63,25 @@ func CalcHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		jsnResult(w, err.Error())
 		log.Errorf(err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	if request.Expression == "" {
 		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
-		resErr := ResponseErr{ResErr: ErrInvalidExprName.Error()}
-		btsErr, _ := json.Marshal(resErr)
-		w.Write(btsErr)
-		//http.Error(w, ErrInvalidExprName.Error(), http.StatusUnprocessableEntity)
+		jsnResult(w, ErrInvalidExprName.Error())
 		log.Errorf(ErrInvalidExprName.Error())
 		return
 	}
-	result, err := calculation.Calc(request.Expression)
-	resJSN := Response{Result: fmt.Sprintf("%.3f", result)}
-	byts, _ := json.Marshal(resJSN)
-	if err != nil {
+	result, err1 := calculation.Calc(request.Expression)
+	if err1 != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		resErr := ResponseErr{ResErr: err.Error()}
-		btsErr, _ := json.Marshal(resErr)
-		w.Write(btsErr)
-		//fmt.Fprintf(w, "ошибка: %s", err.Error())
-		log.Errorf("ошибка: %s", err.Error())
+		jsnResult(w, err1.Error())
+		log.Errorf("ошибка: %s", err1.Error())
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write(byts)
-		//fmt.Fprintf(w, "ответ: %.3f", result)
+		jsnResult(w, fmt.Sprintf("%.3f", result))
 		log.Infof("ответ: %.3f", result)
 	}
 }
