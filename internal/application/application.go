@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -44,8 +45,16 @@ type ResponseErr struct {
 }
 
 func jsnResult(w http.ResponseWriter, str string) { // формирует результат запроса в виде json и выводит его
-	res := ResponseErr{ResErr: str}
-	byts, _ := json.Marshal(res)
+
+	var byts []byte
+	_, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		res := ResponseErr{ResErr: str}
+		byts, _ = json.Marshal(res)
+	} else {
+		res := Response{Result: str}
+		byts, _ = json.Marshal(res)
+	}
 	w.Write(byts)
 }
 
@@ -62,14 +71,14 @@ func CalcHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
 		jsnResult(w, err.Error())
 		log.Errorf(err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	if request.Expression == "" {
-		w.WriteHeader(http.StatusInternalServerError) // 500 ошибка
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		jsnResult(w, ErrInvalidExprName.Error())
 		log.Errorf(ErrInvalidExprName.Error())
 		return
