@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// Config содержит конфигурацию приложения, загруженную из переменных окружения
+// Cодержит конфигурацию приложения, загруженную из переменных окружения среды
 type Config struct {
 	ComputingPower       int
 	TimeAdditionMS       int
@@ -15,7 +15,7 @@ type Config struct {
 	OrchestratorAddr     string
 }
 
-// LoadConfig загружает конфигурацию из переменных окружения
+// Загружает конфигурацию из переменных окружения
 func LoadConfig() Config {
 	return Config{
 		ComputingPower:       getEnvInt("COMPUTING_POWER", 1),
@@ -27,7 +27,7 @@ func LoadConfig() Config {
 	}
 }
 
-// getEnvInt читает переменную окружения и возвращает int, с дефолтным значением
+// Читает переменную окружения и возвращает ее с дефолтным значением
 func getEnvInt(key string, defaultValue int) int {
 	if value, exists := os.LookupEnv(key); exists {
 		if intValue, err := strconv.Atoi(value); err == nil {
@@ -37,7 +37,7 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// getEnvString читает переменную окружения и возвращает string, с дефолтным значением
+// Читает переменную окружения и также возвращает ее с дефолтным значением
 func getEnvString(key string, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value

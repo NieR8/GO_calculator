@@ -8,13 +8,6 @@ import (
 	"strings"
 )
 
-// Ошибки для парсера
-var (
-	ErrInvalidSymbol     = fmt.Errorf("invalid symbol in expression")
-	ErrInvalidExpression = fmt.Errorf("invalid expression")
-)
-
-// CheckExpression проверяет валидность токенов
 func CheckExpression(str []string) bool {
 	for i := 0; i < len(str)-1; i++ {
 		switch {
@@ -25,7 +18,7 @@ func CheckExpression(str []string) bool {
 	return true
 }
 
-// tokenize разбивает строку на токены (числа и операторы)
+// Разбивает строку на токены (числа и операторы)
 func tokenize(expression string) ([]string, error) {
 	var tokens []string
 	var current strings.Builder
@@ -70,7 +63,7 @@ func tokenize(expression string) ([]string, error) {
 	return tokens, nil
 }
 
-// InfixToRPN преобразует инфиксную нотацию в постфиксную (RPN)
+// Преобразует выражение из инфиксной записи в постфиксную (RPN)
 func InfixToRPN(expression string) (string, error) {
 	tokens, err := tokenize(expression)
 	if err != nil {
@@ -121,10 +114,10 @@ func InfixToRPN(expression string) (string, error) {
 	return strings.Join(output, " "), nil
 }
 
-// ParseRPN парсит RPN и строит дерево операций
+// Парсит RPN выражение и строит дерево операций
 func ParseRPN(rpn string) (*models.Node, error) {
 	if rpn == "" {
-		return nil, fmt.Errorf("empty expression")
+		return nil, ErrEmptyExpression
 	}
 
 	tokens := strings.Fields(rpn)
@@ -133,7 +126,7 @@ func ParseRPN(rpn string) (*models.Node, error) {
 	for _, token := range tokens {
 		if IsOperator(token) {
 			if len(stack) < 2 {
-				return nil, fmt.Errorf("invalid RPN expression")
+				return nil, ErrInvalidRpn
 			}
 			right := stack[len(stack)-1]
 			stack = stack[:len(stack)-1]
@@ -144,7 +137,7 @@ func ParseRPN(rpn string) (*models.Node, error) {
 		} else {
 			num, err := strconv.ParseFloat(token, 64)
 			if err != nil {
-				return nil, fmt.Errorf("invalid number: %s", token)
+				return nil, ErrInvalidSymbol
 			}
 			node := &models.Node{Value: fmt.Sprintf("%f", num)}
 			stack = append(stack, node)
@@ -158,32 +151,43 @@ func ParseRPN(rpn string) (*models.Node, error) {
 	return stack[0], nil
 }
 
-// isOperator проверяет, является ли токен оператором
 func IsOperator(token string) bool {
 	return token == "+" || token == "-" || token == "*" || token == "/"
 }
 
-// BuildTasks строит список задач на основе дерева
+// Строит список задач на основе дерева
 func BuildTasks(exprID string, root *models.Node) ([]models.Task, error) {
 	if root == nil {
-		return nil, fmt.Errorf("empty expression")
+		return nil, ErrEmptyExpression
 	}
 
 	var tasks []models.Task
 	var taskCounter int
 
-	var buildTask func(node *models.Node) string
-	buildTask = func(node *models.Node) string {
+	var buildTask func(node *models.Node) (string, error)
+	buildTask = func(node *models.Node) (string, error) {
 		if node == nil {
-			return ""
+			return "", nil
 		}
 
 		if !IsOperator(node.Value) {
-			return node.Value // Число
+			return node.Value, nil // Число
 		}
 
-		leftArg := buildTask(node.Left)
-		rightArg := buildTask(node.Right)
+		if node.Value == "/" {
+			if rightNum, err := strconv.ParseFloat(node.Right.Value, 64); err == nil && rightNum == 0 {
+				return "", ErrDivisionByZero
+			}
+		}
+
+		leftArg, err := buildTask(node.Left)
+		if err != nil {
+			return "", err
+		}
+		rightArg, err := buildTask(node.Right)
+		if err != nil {
+			return "", err
+		}
 
 		taskID := fmt.Sprintf("task-%s-%d", exprID, taskCounter)
 		taskCounter++
@@ -197,13 +201,16 @@ func BuildTasks(exprID string, root *models.Node) ([]models.Task, error) {
 			Completed:     false,
 		}
 		tasks = append(tasks, task)
-		return taskID
+		return taskID, nil
 	}
 
-	buildTask(root)
-	// Разворачиваем задачи, чтобы листья были первыми
+	_, err := buildTask(root)
+	if err != nil {
+		return nil, err // Возвращаем ошибку
+	}
+
 	for i, j := 0, len(tasks)-1; i < j; i, j = i+1, j-1 {
-		tasks[i], tasks[j] = tasks[j], tasks[i]
+		tasks[i], tasks[j] = tasks[j], tasks[i] // Разворачиваем задачи, чтобы дерево считалось снизу вверх
 	}
 	log.Printf("Сформированы задачи для %s: %+v", exprID, tasks)
 	return tasks, nil

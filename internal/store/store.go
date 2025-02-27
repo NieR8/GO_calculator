@@ -14,7 +14,7 @@ type Store struct {
 	Mu           sync.Mutex
 	Expressions  map[int]models.Expression
 	Tasks        map[string]models.Task
-	PendingTasks chan models.Task
+	PendingTasks chan models.Task // Очередь задач, ожидающих выполнения агентом
 }
 
 func NewStore() *Store {
@@ -25,6 +25,7 @@ func NewStore() *Store {
 	}
 }
 
+// Добавляет новое выражение в хранилище
 func (s *Store) AddExpression(expr models.Expression) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -32,6 +33,7 @@ func (s *Store) AddExpression(expr models.Expression) {
 	log.Printf("Добавлено выражение %d: %+v", expr.Id, expr)
 }
 
+// Возвращает выражение по его id
 func (s *Store) GetExpression(id int) (models.Expression, bool) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -40,6 +42,7 @@ func (s *Store) GetExpression(id int) (models.Expression, bool) {
 	return expr, exists
 }
 
+// Возвращает список всех выражений
 func (s *Store) GetAllExpressions() []models.Expression {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -51,6 +54,7 @@ func (s *Store) GetAllExpressions() []models.Expression {
 	return expressions
 }
 
+// Добавляет задачу в хранилище и очередь
 func (s *Store) AddTask(task models.Task) {
 	s.Mu.Lock()
 	s.Tasks[task.ID] = task
@@ -59,6 +63,7 @@ func (s *Store) AddTask(task models.Task) {
 	s.Mu.Unlock()
 }
 
+// Обновляет задачу результатом от агента и проверяет завершение выражения
 func (s *Store) UpdateTask(result models.Result) bool {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -71,7 +76,7 @@ func (s *Store) UpdateTask(result models.Result) bool {
 
 	log.Printf("Обновление задачи %s: старое значение %+v, новый результат %f", result.TaskID, task, result.Value)
 	task.Result = result.Value
-	task.Completed = true // Устанавливаем флаг завершения
+	task.Completed = true
 	s.Tasks[result.TaskID] = task
 	log.Printf("Задача %s обновлена: %+v", result.TaskID, task)
 
@@ -120,10 +125,12 @@ func (s *Store) UpdateTask(result models.Result) bool {
 	return true
 }
 
+// Вычисляет итоговый результат выражения по его дереву
 func (s *Store) calculateExpression(expr models.Expression) (float64, error) {
 	return s.evaluateNode(expr.Node)
 }
 
+// Рекурсивно вычисляет значение узла дерева
 func (s *Store) evaluateNode(node *models.Node) (float64, error) {
 	if node == nil {
 		return 0, fmt.Errorf("nil node")
@@ -160,6 +167,7 @@ func (s *Store) evaluateNode(node *models.Node) (float64, error) {
 	}
 }
 
+// Извлекает следующую готовую задачу из очереди
 func (s *Store) GetPendingTask() (models.Task, bool) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -169,16 +177,13 @@ func (s *Store) GetPendingTask() (models.Task, bool) {
 		case task := <-s.PendingTasks:
 			if s.isTaskReady(task) {
 				log.Printf("Задача %s готова и выдана: %+v", task.ID, task)
-				return task, true
+				return task, true // Выдали задачу
 			}
-			log.Printf("Задача %s не готова, возвращаем в очередь: %+v", task.ID, task)
-			s.PendingTasks <- task
+			s.PendingTasks <- task // Задача еще не готова, возвращаем ее в очередь
 		default:
-			//log.Println("Очередь задач пуста")
-			return models.Task{}, false
+			return models.Task{}, false // Очередь задач пуста
 		}
 	}
-	log.Println("Нет готовых задач в очереди после проверки")
 	return models.Task{}, false
 }
 
@@ -189,14 +194,12 @@ func (s *Store) isTaskReady(task models.Task) bool {
 	if !isNumeric(task.Arg1) {
 		depTask, exists := s.Tasks[task.Arg1]
 		if !exists || !depTask.Completed {
-			log.Printf("Зависимость %s для задачи %s не готова: exists=%v, completed=%v", task.Arg1, task.ID, exists, depTask.Completed)
 			return false
 		}
 	}
 	if !isNumeric(task.Arg2) {
 		depTask, exists := s.Tasks[task.Arg2]
 		if !exists || !depTask.Completed {
-			log.Printf("Зависимость %s для задачи %s не готова: exists=%v, completed=%v", task.Arg2, task.ID, exists, depTask.Completed)
 			return false
 		}
 	}

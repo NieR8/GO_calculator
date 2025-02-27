@@ -14,12 +14,12 @@ func HandleTask(st *store.Store) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			if r.URL.Path == "/internal/task" {
-				handleGetTask(w, r, st)
+				handleGetTask(w, r, st) // Выдает задачу агенту через этот метод
 			} else {
 				http.Error(w, "Not found", http.StatusNotFound)
 			}
 		case http.MethodPost:
-			handlePostTask(w, r, st)
+			handlePostTask(w, r, st) // Принимает результат от агента через этот метод
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -32,10 +32,11 @@ func HandleTaskResult(st *store.Store) http.HandlerFunc {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		handleGetTaskResult(w, r, st)
+		handleGetTaskResult(w, r, st) // Возвращает результат задачи агенту
 	}
 }
 
+// Выдаёт следующую готовую задачу агенту
 func handleGetTask(w http.ResponseWriter, r *http.Request, st *store.Store) {
 	task, exists := st.GetPendingTask()
 	if !exists {
@@ -49,6 +50,7 @@ func handleGetTask(w http.ResponseWriter, r *http.Request, st *store.Store) {
 	}{Task: task})
 }
 
+// Принимает результат выполненной задачи
 func handlePostTask(w http.ResponseWriter, r *http.Request, st *store.Store) {
 	var result models.Result
 	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
@@ -95,7 +97,7 @@ func handleGetTaskResult(w http.ResponseWriter, r *http.Request, st *store.Store
 	if !task.Completed {
 		log.Printf("Результат задачи %s ещё не готов: %+v", taskID, task)
 		http.Error(w, "Task result not available", http.StatusNotFound)
-		return
+		//return
 	}
 
 	log.Printf("Возвращён результат задачи %s: %f", taskID, task.Result)

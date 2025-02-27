@@ -56,6 +56,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	return o.Server.Shutdown(context.Background())
 }
 
+// Принимает POST-запросы, парсит выражение, создаёт задачи и добавляет их в очередь
 func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -98,7 +99,7 @@ func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		expr.Status = 3
 		o.Store.AddExpression(expr)
-		http.Error(w, "Failed to build tasks", http.StatusUnprocessableEntity)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -115,6 +116,7 @@ func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 	}{ID: id})
 }
 
+// Возвращает список всех выражений
 func (o *Orchestrator) handleGetExpressions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -128,6 +130,7 @@ func (o *Orchestrator) handleGetExpressions(w http.ResponseWriter, r *http.Reque
 	}{Expressions: expressions})
 }
 
+// Возвращает конкретное выражение
 func (o *Orchestrator) handleGetExpressionByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

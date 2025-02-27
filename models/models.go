@@ -31,5 +31,5 @@ type Expression struct {
 	Status int     `json:"status"` // 0: посчиталось, 1: считается, 2: ждёт, 3: невалидно
 	Id     int     `json:"id"`
 	Result float64 `json:"result"`
-	Node   *Node   `json:"node"`
+	Node   *Node   `json:"node,omitempty"`
 }

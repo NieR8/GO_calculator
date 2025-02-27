@@ -46,6 +46,7 @@ func NewAgent() *Agent {
 	return agent
 }
 
+// Запускает воркеры и распределяет задачи
 func (a *Agent) Run(stop <-chan struct{}) {
 	log.Printf("Запуск агента %d с %d вычислителями", a.ind, len(a.Tasks))
 
@@ -64,13 +65,13 @@ func (a *Agent) Run(stop <-chan struct{}) {
 			a.wg.Wait()
 			return
 		default:
-			workerID := a.getFreeWorker()
+			workerID := a.getFreeWorker() // Ищем свободный воркер
 			if workerID == -1 {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 
-			task, err := a.getTask(baseURL)
+			task, err := a.getTask(baseURL) // Запрашиваем задачу у оркестратора
 			if err != nil {
 				if err.Error() == "no task available" {
 					time.Sleep(1 * time.Second)
@@ -88,6 +89,7 @@ func (a *Agent) Run(stop <-chan struct{}) {
 	}
 }
 
+// Выполняет задачи в отдельной горутине
 func (a *Agent) worker(workerID int, taskChan <-chan models.Task, stop <-chan struct{}) {
 	defer a.wg.Done()
 	baseURL := "http://localhost" + a.Config.OrchestratorAddr
@@ -106,7 +108,7 @@ func (a *Agent) worker(workerID int, taskChan <-chan models.Task, stop <-chan st
 			}
 
 			log.Printf("[Агент %d] Вычислитель %d: Результат задачи %s готов к отправке: %f", a.ind, workerID, task.ID, result.Value)
-			for retries := 0; retries < 5; retries++ {
+			for retries := 0; retries < 5; retries++ { // Пытаемся отправить результат до 5 раз с паузой
 				err = a.sendResult(baseURL, result)
 				if err != nil {
 					log.Printf("[Агент %d] Вычислитель %d: Ошибка при отправке результата для задачи %s: %v, попытка %d", a.ind, workerID, task.ID, err, retries+1)
@@ -118,24 +120,27 @@ func (a *Agent) worker(workerID int, taskChan <-chan models.Task, stop <-chan st
 			}
 			if err != nil {
 				log.Printf("[Агент %d] Вычислитель %d: Не удалось отправить результат для задачи %s после всех попыток: %v", a.ind, workerID, task.ID, err)
-				a.IsFree[workerID] = true
+				a.IsFree[workerID] = true // Освобождаем после 5 попыток чтобы не зависнуть на неудавшейся операции
 				continue
 			}
 
 			log.Printf("[Агент %d] Вычислитель %d: Задача %s выполнена: %f", a.ind, workerID, task.ID, result.Value)
-			a.IsFree[workerID] = true
+			a.IsFree[workerID] = true // Если отправили успешно, то освобождаем воркер
 		}
 	}
 }
+
+// Находит индекс свободного воркера
 func (a *Agent) getFreeWorker() int {
 	for i, free := range a.IsFree {
 		if free {
 			return i
 		}
 	}
-	return -1
+	return -1 // Если все заняты
 }
 
+// Запрашивает задачу у оркестратора и возвращает ее
 func (a *Agent) getTask(baseURL string) (*models.Task, error) {
 	resp, err := a.Client.Get(baseURL + "/internal/task")
 	if err != nil {
@@ -160,6 +165,7 @@ func (a *Agent) getTask(baseURL string) (*models.Task, error) {
 	return &response.Task, nil
 }
 
+// Вычисляет результат задачи и возвращает его
 func (a *Agent) processTask(task *models.Task, baseURL string) (*models.Result, error) {
 	var arg1, arg2 float64
 	var err error
@@ -171,7 +177,7 @@ func (a *Agent) processTask(task *models.Task, baseURL string) (*models.Result, 
 		}
 	} else {
 		for retries := 0; retries < 5; retries++ {
-			arg1, err = a.getTaskResult(baseURL, task.Arg1)
+			arg1, err = a.getTaskResult(baseURL, task.Arg1) // Если не число, то запрашиваем результат зависимости
 			if err == nil {
 				break
 			}
@@ -232,6 +238,7 @@ func (a *Agent) processTask(task *models.Task, baseURL string) (*models.Result, 
 	}, nil
 }
 
+// Запрашивает результат зависимости (если текущая задача зависит от другой) у оркестратора
 func (a *Agent) getTaskResult(baseURL, taskID string) (float64, error) {
 	url := baseURL + "/internal/task/result/" + taskID
 	resp, err := a.Client.Get(url)
@@ -254,23 +261,40 @@ func (a *Agent) getTaskResult(baseURL, taskID string) (float64, error) {
 	return response.Result, nil
 }
 
+// Отправляет результат задачи оркестратору
 func (a *Agent) sendResult(baseURL string, result *models.Result) error {
 	body, err := json.Marshal(result)
 	if err != nil {
 		return err
 	}
 
-	resp, err := a.Client.Post(baseURL+"/internal/task", "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	maxRetries := 5
+	for retries := 0; retries < maxRetries; retries++ {
+		resp, err := a.Client.Post(baseURL+"/internal/task", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			log.Printf("[Агент %d] Ошибка отправки результата %s: %v, попытка %d", a.ind, result.TaskID, err, retries+1)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		switch resp.StatusCode {
+		case http.StatusOK:
+			log.Printf("[Агент %d] Результат %s отправлен: %f", a.ind, result.TaskID, result.Value)
+			return nil
+		case http.StatusInternalServerError: // 500
+			log.Printf("[Агент %d] Ошибка сервера 500 для задачи %s, попытка %d", a.ind, result.TaskID, retries+1)
+			time.Sleep(1 * time.Second)
+			continue
+		default:
+			log.Printf("[Агент %d] Неожиданный код ответа %d для задачи %s", a.ind, resp.StatusCode, result.TaskID)
+			return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
 	}
 
-	return nil
+	log.Printf("[Агент %d] Не удалось отправить результат %s после %d попыток", a.ind, result.TaskID, maxRetries)
+	return fmt.Errorf("failed to send result after %d retries", maxRetries)
+
 }
 
 func isNumeric(arg string) bool {
