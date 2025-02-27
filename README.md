@@ -23,8 +23,32 @@
 
 
 
-## Как сформировать POST-запрос:
+A distributed system for evaluating mathematical expressions with an orchestrator and agents.
 
+```mermaid
+graph TD
+    A[cmd/main.go] -->|Starts| B(orchestrator/orchestrator.go)
+    A -->|Starts| C(agent/agent.go)
+    
+    B -->|Uses| D[internal/api/handlers.go]
+    B -->|Uses| E[internal/store/store.go]
+    B -->|Uses| F[pkg/parser/parser.go]
+    B -->|Uses| G[models/models.go]
+    
+    C -->|Uses| G
+    C -->|HTTP Requests| D
+    
+    D -->|Uses| E
+    E -->|Uses| G
+    
+    F -->|Uses| H[pkg/parser/errors.go]
+    F -->|Uses| G
+    
+    H -->|Defines| I(Errors: ErrInvalidSymbol, ErrInvalidExpression, etc.)
+```
+
+## Как сформировать POST-запрос:
+[agent.go](agent%2Fagent.go)
 1) Если вы используете macOS, для отправки запроса в терминале введите команду:  
 `curl --location 'http://localhost:PORT/api/v1/calculate' \
    --header 'Content-Type: application/json' \

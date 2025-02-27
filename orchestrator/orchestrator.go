@@ -78,6 +78,9 @@ func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 		Id:     id,
 	}
 
+	o.Store.AddExpression(expr)
+	log.Printf("Выражение %d со статусом 2 добавлено в Store: %+v", id, expr)
+
 	rpn, err := parser.InfixToRPN(req.Expression)
 	if err != nil {
 		expr.Status = 3
@@ -103,11 +106,25 @@ func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expr.Status = 1
-	for i := len(tasks) - 1; i >= 0; i-- {
-		o.Store.AddTask(tasks[i])
+	if len(tasks) == 0 && tree != nil && !parser.IsOperator(tree.Value) { // Если задач нет и это просто одно число
+		result, err := strconv.ParseFloat(tree.Value, 64)
+		if err != nil {
+			expr.Status = 3
+			o.Store.AddExpression(expr)
+			http.Error(w, "Invalid number: "+err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		expr.Status = 0
+		expr.Result = result
+		o.Store.AddExpression(expr)
+		log.Printf("Выражение %d завершено без задач: %+v", id, expr)
+	} else {
+		expr.Status = 1
+		for i := len(tasks) - 1; i >= 0; i-- {
+			o.Store.AddTask(tasks[i])
+		}
+		o.Store.AddExpression(expr)
 	}
-	o.Store.AddExpression(expr)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
