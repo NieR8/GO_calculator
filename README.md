@@ -1,27 +1,17 @@
 # Калькулятор на Go
 
 ## Как запустить программу:
-`math-expression-calculator/
-├── cmd/
-│   └── main.go         # Точка входа, запускает оркестратор и агента
-├── internal/
-│   ├── api/
-│   │   └── handlers.go # Обработчики внутренних API-запросов
-│   ├── store/
-│   │   └── store.go   # Хранилище задач и выражений
-│   └── env/
-│       └── env.go     # Загрузка конфигурации (COMPUTING_POWER, TIME_ADDITION_MS)
-├── agent/
-│   └── agent.go       # Логика агента (воркеры, вычисление задач)
-├── orchestrator/
-│   └── orchestrator.go # Логика оркестратора (API, управление задачами)
-├── pkg/
-│   └── parser/
-│       └── parser.go  # Парсер выражений
-└── models/
-└── models.go      # Структуры данных (Task, Expression, Node)`
+#### Объяснение схемы
+- **`cmd/main.go`**: Точка входа, запускает оркестратор и агента.
+- **`orchestrator/orchestrator.go`**: Центральный узел, использует API, хранилище, парсер и модели.
+- **`agent/agent.go`**: Исполнители задач, взаимодействуют с оркестратором через API.
+- **`internal/api/handlers.go`**: Обрабатывает запросы агентов.
+- **`internal/store/store.go`**: Хранит задачи и выражения.
+- **`pkg/parser/parser.go`**: Парсит выражения, зависит от `errors.go` и моделей.
+- **`pkg/parser/errors.go`**: Определяет ошибки парсинга.
+- **`models/models.go`**: Общие структуры данных.
 
-
+---
 
 A distributed system for evaluating mathematical expressions with an orchestrator and agents.
 

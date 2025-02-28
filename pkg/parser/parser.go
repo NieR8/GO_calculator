@@ -193,12 +193,11 @@ func BuildTasks(exprID string, root *models.Node) ([]models.Task, error) {
 		taskCounter++
 
 		task := models.Task{
-			ID:            taskID,
-			Arg1:          leftArg,
-			Arg2:          rightArg,
-			Operation:     node.Value,
-			OperationTime: 0.1,
-			Completed:     false,
+			ID:        taskID,
+			Arg1:      leftArg,
+			Arg2:      rightArg,
+			Operation: node.Value,
+			Completed: false,
 		}
 		tasks = append(tasks, task)
 		return taskID, nil

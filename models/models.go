@@ -9,13 +9,12 @@ type Node struct {
 
 // Task представляет задачу для вычисления
 type Task struct {
-	ID            string  `json:"id"`
-	Arg1          string  `json:"arg1"`
-	Arg2          string  `json:"arg2"`
-	Operation     string  `json:"operation"`
-	OperationTime float64 `json:"operation_time"`
-	Result        float64 `json:"result,omitempty"`
-	Completed     bool    `json:"completed"`
+	ID        string  `json:"id"`
+	Arg1      string  `json:"arg1"`
+	Arg2      string  `json:"arg2"`
+	Operation string  `json:"operation"` // (+ - / *)
+	Result    float64 `json:"result,omitempty"`
+	Completed bool    `json:"completed"`
 }
 
 // Result представляет результат выполнения задачи
