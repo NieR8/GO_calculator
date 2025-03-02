@@ -18,11 +18,11 @@ type Config struct {
 // Загружает конфигурацию из переменных окружения
 func LoadConfig() Config {
 	return Config{
-		ComputingPower:       getEnvInt("COMPUTING_POWER", 1),
-		TimeAdditionMS:       getEnvInt("TIME_ADDITION_MS", 100),
-		TimeSubtractionMS:    getEnvInt("TIME_SUBTRACTION_MS", 100),
+		ComputingPower:       getEnvInt("COMPUTING_POWER", 3),
+		TimeAdditionMS:       getEnvInt("TIME_ADDITION_MS", 200),
+		TimeSubtractionMS:    getEnvInt("TIME_SUBTRACTION_MS", 150),
 		TimeMultiplicationMS: getEnvInt("TIME_MULTIPLICATIONS_MS", 100),
-		TimeDivisionMS:       getEnvInt("TIME_DIVISIONS_MS", 100),
+		TimeDivisionMS:       getEnvInt("TIME_DIVISIONS_MS", 250),
 		OrchestratorAddr:     getEnvString("ORCHESTRATOR_ADDR", ":8080"),
 	}
 }
