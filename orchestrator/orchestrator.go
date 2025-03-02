@@ -42,6 +42,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/expressions/", o.handleGetExpressionByID)
 	mux.HandleFunc("/internal/task", api.HandleTask(o.Store))
 	mux.HandleFunc("/internal/task/result/", api.HandleTaskResult(o.Store))
+	mux.HandleFunc("/api/v1/pending-tasks", o.handleGetPendingTasks) // эндпоинт для мониторинга еще незавершенных задач
 
 	o.Server.Handler = mux
 
@@ -171,4 +172,39 @@ func (o *Orchestrator) handleGetExpressionByID(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(struct {
 		Expression models.Expression `json:"expression"`
 	}{Expression: expr})
+}
+
+func (o *Orchestrator) handleGetPendingTasks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var tasks []models.Task
+	o.Store.Mu.Lock()
+	//for i := 0; i < cap(o.Store.PendingTasks); i++ {
+	//	select {
+	//	case task := <-o.Store.PendingTasks:
+	//		tasks = append(tasks, task)
+	//		o.Store.PendingTasks <- task // Возвращаем задачу в очередь
+	//	default:
+	//		break
+	//	}
+	//}
+	for _, task := range o.Store.Tasks {
+		if !task.Completed { // Показываем только незавершённые задачи
+			tasks = append(tasks, task)
+		}
+	}
+	o.Store.Mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(struct {
+		Tasks []models.Task `json:"tasks"`
+	}{Tasks: tasks})
+	if err != nil {
+		log.Printf("Ошибка сериализации задач: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
