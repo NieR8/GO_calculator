@@ -119,7 +119,7 @@ $env:ORCHESTRATOR_ADDR=":8080"
 
 ## Как сформировать POST-запрос:
 ### Отправка выражения
-1) Если вы используете macOS для отправки запроса, в терминале введите команду:  
+- Если вы используете macOS для отправки запроса, в терминале введите команду:  
 ```
    curl --location 'http://localhost:8080/api/v1/calculate' \
    --header 'Content-Type: application/json' \
@@ -127,27 +127,63 @@ $env:ORCHESTRATOR_ADDR=":8080"
    "expression": "2+2"
    }'
 ```     
-где `{ "expression": "2+2"}` - пример математического выражения для калькулятора.
-2) Если вы используете Windows OS, то в терминале PowerShell команда для вас:  
+где `{ "expression": "2+2"}` - пример математического выражения для калькулятора. 
+- Если вы используете Windows OS, то в терминале PowerShell команда для вас:  
 ```
 Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{"expression": "2+2"}' -ContentType "application/json"
 ```  
+Пример ответа:
 ![img.png](pics/img.png)
 
-3) Также запрос можно отправить с помощью Postman. Для этого в новом запросе выберите метод `POST`, введите адрес, по которому нужно отправить запрос и во вкладке `Body` -> `raw` введите выражение.  
+- Также запрос можно отправить с помощью Postman. Для этого в новом запросе выберите метод `POST`, введите адрес, по которому нужно отправить запрос и во вкладке `Body` -> `raw` введите выражение. 
 
+### Получение выражений и данных
+#### Получение всех выражений
+Для macOS:
+```
+curl "http://localhost:8080/api/v1/expressions"
+```
+Для Windows OS:
+```
+Invoke-WebRequest -Method GET -Uri "http://localhost:8080/api/v1/expressions"
+```
+Пример ответа:
+![img.png](pics/img1.png)
+
+#### Получение выражения по id
+Для macOS:
+```
+curl "http://localhost:8080/api/v1/expressions/1"
+```
+Для Windows OS:
+```
+Invoke-WebRequest -Method GET -Uri "http://localhost:8080/api/v1/expressions/1"
+```
+#### Получение незавершенных задач
+Для macOS:
+```
+curl "http://localhost:8080/api/v1/pending-tasks"
+```
+Для Windows OS:
+```
+Invoke-WebRequest -Method GET -Uri "http://localhost:8080/api/v1/pending-tasks"
+```
+Пример ответа:
+![img.png](pics/img2.png)
 ## Информация по доступным значения в математических выражениях
 
 1) В программе допустимо ввод числа с плавающей точкой подобным образом: `.4 = 0.4` или `4. = 4.0`. Нельзя использовать знак `,` в таких чилсах, только `.`: `3.0 + 0.3` - правильно, `3,0 + 0,3` - программа выдаст ошибку.
-2) В программе допустимо вычисления с отрицательными числами, но если вы хотите вычислить такое выражение, оберните отрицательные числа в скобки (если это отрицательное число не стоит вначале выражения) по примеру: `-2/(-2), -2-(-2), -2*(-2), -2-(+2)`.
+2) В программе допустимо вычисления с отрицательными числами, но если вы хотите вычислить такое выражение, оберните отрицательные числа в скобки (если это отрицательное число не стоит вначале выражения) по примеру: `-2/(-2), -2-(-2), -2*(-2)`.
 3) Если вы отправите пустое `Body`, либо обратитесь по эндпоинту c любым другим запросом кроме POST, то программа выдаст ошибку с кодом 500.
 В программе есть тесты, для их запуска в корне проекта введите команду `go test .\...`. В результате должно отобразиться подобное сообщение:  
 
 
 Таблица со статусами для сводки
 
-| Статус   | Тело запроса                                                                                                                               | Ответ |
-|----------|--------------------------------------------------------------------------------------------------------------------------------------------|-|
-| 200 (ОК) | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{"expression": "2/2"}' -ContentType "application/json"` | `{"result":"1.000"}` |
-| 422      | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{"expression": "2/0"}' -ContentType "application/json"` | `{"error":"деление на 0"}`|
-| 500      | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{' -ContentType "application/json"`                     |`{"error":"unexpected EOF"}` |
+| Статус         | Тело запроса                                                                                                                               | Ответ                  |
+|----------------|--------------------------------------------------------------------------------------------------------------------------------------------|------------------------|
+| 201 (Created)  | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{"expression": "2/2"}' -ContentType "application/json"` | `{"id":"1"}`           |
+| 422            | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{"expression": "2/0"}' -ContentType "application/json"` | `division by zero`     |
+| 404            | `Invoke-WebRequest -Method GET -Uri "http://localhost:8080/api/v1/expressions/444"`                                                        | `Expression not found` |
+| 200 (OK)       | `Invoke-WebRequest -Method GET -Uri "http://localhost:8080/api/v1/pending-tasks"`                                                          | `{"tasks": null}`      |
+| 500            | `Invoke-WebRequest -Method Post -Uri http://localhost:8080/api/v1/calculate -Body '{' -ContentType "application/json"`                     | `Invalid request`      |

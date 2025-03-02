@@ -68,7 +68,7 @@ func (o *Orchestrator) handleCalculate(w http.ResponseWriter, r *http.Request) {
 		Expression string `json:"expression"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Expression == "" {
-		http.Error(w, "Invalid request", http.StatusUnprocessableEntity)
+		http.Error(w, "Invalid request", http.StatusInternalServerError)
 		return
 	}
 
